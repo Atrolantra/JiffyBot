@@ -38,17 +38,17 @@ import HTMLParser
 import sys
 import ConfigParser
 
-# Set up config so we can get basic data
+# Set up config so we can get basic data.
 config = ConfigParser.ConfigParser()
 config.read("jiffy.cfg")
 
-# Constants
-# Imgur related
+# Constants.
+# Imgur related.
 API_KEY = config.get("Imgur", "client_id")
 URL = "https://api.imgur.com/3/upload.json"
 HEADERS = {"Authorization": "Client-ID " + API_KEY}
 
-# Reddit related
+# Reddit related.
 USERNAME = config.get("Reddit", "username")
 PASSWORD = config.get("Reddit", "password")
 COMMENT_TEMPLATE = "Here's your GIF!\n\n{0}\n\n_____\n^(Hey I'm JiffyBot, I\
@@ -60,12 +60,12 @@ MULTI_TEMPLATE = "Here are your GIFs!\n\n{0}\n\n_____\n^(Hey I'm JiffyBot,\
   it.com/r/JiffyBot/comments/1fvrsq/the_official_make_your_own_gif_verison_\
   sfw/cano2pi?context=3)"
 
-# YouTube related
+# YouTube related.
 YT_USERNAME = config.get("YouTube", "username")
 YT_PASSWORD = config.get("YouTube", "password")
 
-# Objects
-# Reddit related
+# Objects.
+# Reddit related.
 r = praw.Reddit(user_agent="JiffyBot by /u/drkabob/. Converts YouTube links to\
     GIFs.")
 r.login(USERNAME, PASSWORD)
@@ -79,7 +79,7 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for x in range(size))
 
 
-# Upload to imgur function
+# Upload to imgur function.
 def imgur_upload(path):
     request = requests.post(
         URL,
@@ -95,9 +95,9 @@ def imgur_upload(path):
     return request.json()["data"]["link"]
 
 
-# Function is blocking, so it should be run in a separate thread
-# Works with any video link youtube-dl supports
-# Returns imgur link
+# Function is blocking, so it should be run in a separate thread.
+# Works with any video link youtube-dl supports.
+# Returns imgur link.
 def youtubetogif(youtubelink, token, start, stop):
 
     try:
@@ -130,20 +130,20 @@ def youtubetogif(youtubelink, token, start, stop):
 
         tosend = tosend[0:len(tosend)-1]
 
-        # Download the YouTube link and save it
+        # Download the YouTube link and save it.
         check_call([
             "youtube-dl", "-o", token + "-vid", "-f", "5", "--max-filesize",
             "40m", "-u", YT_USERNAME, "-p", YT_PASSWORD, youtubelink],
             stdout=open("/dev/null", "w"), stderr=subprocess.STDOUT)
 
-        # Convert to frames
+        # Convert to frames.
         check_call([
             "ffmpeg", "-ss", start, "-i", token + "-vid", "-t", tosend, "-vf",
             "scale=240:trunc(ow/a/2)*2", "-r", "10",
             token + "-frames%05d.gif"], stdout=open("/dev/null", "w"),
             stderr=subprocess.STDOUT)
 
-        # Stitch it together as a gif
+        # Stitch it together as a gif.
         files = glob.glob(token + "-frames*.gif")
 
         arguments = ["gifsicle", "--loop", "--optimize"]
@@ -151,7 +151,7 @@ def youtubetogif(youtubelink, token, start, stop):
 
         check_call(arguments, stdout=open(token + ".gif", 'w'))
 
-        # Upload to imgur
+        # Upload to imgur.
         link = imgur_upload(token + ".gif")
 
     except Exception, e:
@@ -159,7 +159,7 @@ def youtubetogif(youtubelink, token, start, stop):
         print e
 
     finally:
-        # Delete unnecessary files
+        # Delete unnecessary files.
         files = glob.glob(token + "*")
 
         arguments = ["rm"]
@@ -209,49 +209,49 @@ def parse_comment(comment):
         yt_loc = re.findall("https?://www.youtube.com/.*", comment.body)
         yt_loc += re.findall("https?://youtu.be/.*", comment.body)
 
-        # YouTube link is in comment
+        # YouTube link is in comment.
         if yt_loc != []:
             yt_link = yt_loc[0]
             parse_comment_body(comment, yt_link)
 
-        # YouTube link is in submission
+        # YouTube link is in submission.
         elif ("youtube" in comment.submission.url or
                 "youtu.be" in comment.submission.url):
             parse_comment_body(comment, comment.submission.url)
 
 
-# Main loop for comment searching and parsing
+# Main loop for comment searching and parsing.
 def main_loop():
-    # Main loop start here...
+    # Main loop start here.
     while True:
-        # Read the blacklist and place it into an array
+        # Read the blacklist and place it into an array.
         with open("blacklist.txt", 'r') as f:
             del blacklist[:]
             for entry in f.readlines():
                 blacklist.append(entry.strip())
 
-        # Read read list for mentioned
+        # Read read list for mentioned.
         with open("readlist.txt", 'r') as f:
             readlist = []
             for entry in f.readlines():
                 readlist.append(entry.strip())
 
-        # Start the comment loop
+        # Start the comment loop.
         try:
-            # Grab as many comments as we can and loop through them
+            # Grab as many comments as we can and loop through them.
             for comment in r.get_comments("all", limit=None):
-                # Check if the comment meets the basic criteria
+                # Check if the comment meets the basic criteria.
                 if "Jiffy!" in comment.body:
                     parse_comment(comment)
 
-            # Check mentions
+            # Check mentions.
             for comment in r.get_mentions():
                 if comment.id not in readlist:
                     with open("readlist.txt", "a") as f:
                         f.write(comment.id + '\n')
                     parse_comment(comment)
 
-            # Finally wait 30 seconds
+            # Finally wait 30 seconds.
             time.sleep(30)
         except Exception, e:
             print e
